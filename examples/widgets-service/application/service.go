@@ -118,8 +118,8 @@ func (s *WidgetService) GetWidget(ctx context.Context, req GetWidgetRequest) (*W
 	// The repository decides which expression languages it supports
 	widget, err := s.repo.FindByID(ctx, domain.WidgetID(req.WidgetID), authzResp.Condition)
 	if err != nil {
-		// "Not found" could mean either doesn't exist or not authorized (security feature)
-		return nil, fmt.Errorf("widget not found or access denied")
+		// Return the error as-is so caller can distinguish ErrNotFound from other errors
+		return nil, err
 	}
 
 	return &WidgetResponse{

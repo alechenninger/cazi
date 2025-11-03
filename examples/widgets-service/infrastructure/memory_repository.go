@@ -49,14 +49,14 @@ func (r *InMemoryWidgetRepository) Save(ctx context.Context, widget *domain.Widg
 }
 
 // FindByID retrieves a widget by ID from memory, optionally applying an authorization expression.
-// The expression is evaluated as a filter - if it doesn't match, returns "not found" (security feature).
+// The expression is evaluated as a filter - if it doesn't match, returns ErrNotFound (security feature).
 func (r *InMemoryWidgetRepository) FindByID(ctx context.Context, id domain.WidgetID, authzExpression cazi.Expression) (*domain.Widget, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
 	data, exists := r.widgets[id]
 	if !exists {
-		return nil, fmt.Errorf("widget not found: %s", id)
+		return nil, domain.ErrNotFound
 	}
 
 	// Apply authorization expression as part of the query filter
@@ -68,7 +68,7 @@ func (r *InMemoryWidgetRepository) FindByID(ctx context.Context, id domain.Widge
 		if !matches {
 			// Return same error as "not found" - security feature
 			// This prevents leaking information about whether the resource exists
-			return nil, fmt.Errorf("widget not found: %s", id)
+			return nil, domain.ErrNotFound
 		}
 	}
 

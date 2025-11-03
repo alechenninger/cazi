@@ -2,9 +2,11 @@ package presentation
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"widgets-service/application"
+	"widgets-service/domain"
 
 	"github.com/alechenninger/cazi/pkg/cazi"
 )
@@ -120,7 +122,14 @@ func (h *WidgetHandler) GetWidget(w http.ResponseWriter, r *http.Request) {
 
 	widget, err := h.service.GetWidget(r.Context(), appReq)
 	if err != nil {
-		h.writeError(w, http.StatusForbidden, err.Error())
+		// Check for specific error types
+		if errors.Is(err, domain.ErrNotFound) {
+			// Widget not found or not authorized (information hiding)
+			h.writeError(w, http.StatusNotFound, "widget not found")
+			return
+		}
+		// Any other error is a server error
+		h.writeError(w, http.StatusInternalServerError, "internal server error")
 		return
 	}
 
