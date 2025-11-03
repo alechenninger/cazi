@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package cazi.v1;
+
+option go_package = "github.com/alechenninger/cazi/gen/go/cazi/v1;caziv1";
+option java_package = "com.github.alechenninger.cazi.v1";
+option java_multiple_files = true;
+
+// CommonAuthorizationInterface defines the core authorization service
+service CommonAuthorizationInterface {
+  // TODO: Define authorization methods
+}
+
+// TODO: Define request/response messages
+
