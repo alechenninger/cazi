@@ -22,7 +22,7 @@ func NewLocalAuthz() *LocalAuthz {
 // - Users can "read" widgets they own (returns conditional expression)
 func (a *LocalAuthz) Check(ctx context.Context, req cazi.CheckRequest) (cazi.CheckResponse, error) {
 	// Extract subject user ID
-	subjectRes, ok := req.Subject.Token.(cazi.ResourceReference)
+	subjectRes, ok := req.Subject.Assertion.(cazi.ResourceReference)
 	if !ok {
 		return cazi.CheckResponse{Decision: cazi.DecisionDeny}, fmt.Errorf("subject must be a ResourceReference")
 	}
@@ -32,7 +32,7 @@ func (a *LocalAuthz) Check(ctx context.Context, req cazi.CheckRequest) (cazi.Che
 	userID := subjectRes.ID
 
 	// Extract object widget ID
-	objectRes, ok := req.Object.Token.(cazi.ResourceReference)
+	objectRes, ok := req.Object.Assertion.(cazi.ResourceReference)
 	if !ok {
 		return cazi.CheckResponse{Decision: cazi.DecisionDeny}, fmt.Errorf("object must be a ResourceReference")
 	}

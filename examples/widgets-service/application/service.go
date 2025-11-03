@@ -50,15 +50,13 @@ func NewWidgetService(repo domain.WidgetRepository, authz cazi.Interface) *Widge
 // CreateWidget creates a new widget for the given subject.
 func (s *WidgetService) CreateWidget(ctx context.Context, req CreateWidgetRequest) (*WidgetResponse, error) {
 	// Check authorization
-	authzReq := cazi.CheckRequest{
+	authzResp, err := s.authz.Check(ctx, cazi.CheckRequest{
 		Subject: req.Subject,
 		Verb:    "create",
 		Object: cazi.Object{
-			Token: cazi.ResourceReference{Type: "widget", ID: req.WidgetID},
+			Assertion: cazi.ResourceReference{Type: "widget", ID: req.WidgetID},
 		},
-	}
-
-	authzResp, err := s.authz.Check(ctx, authzReq)
+	})
 	if err != nil {
 		return nil, fmt.Errorf("authorization check failed: %w", err)
 	}
@@ -103,7 +101,7 @@ func (s *WidgetService) GetWidget(ctx context.Context, req GetWidgetRequest) (*W
 		Subject: req.Subject,
 		Verb:    "read",
 		Object: cazi.Object{
-			Token: cazi.ResourceReference{Type: "widget", ID: req.WidgetID},
+			Assertion: cazi.ResourceReference{Type: "widget", ID: req.WidgetID},
 		},
 	}
 

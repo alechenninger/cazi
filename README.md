@@ -20,7 +20,7 @@ A `Check` operation accepts a subject, verb, and object, returning:
 
 ## Key Concepts
 
-**Tokens**: Subjects and objects are represented as tokens—resource references, claims, or opaque payloads. This allows flexible identity representation without prescribing authentication mechanisms.
+**Assertions**: Subjects and objects are represented as assertions—resource references, claims, or opaque payloads. This allows flexible identity representation without prescribing verification mechanisms.
 
 **Conditional Responses**: Authorization systems can return expressions (CEL, Rego, etc.) instead of making decisions directly. Callers evaluate these expressions against their own data, enabling authorization at query time.
 

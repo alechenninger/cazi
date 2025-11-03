@@ -54,7 +54,7 @@ func (h *WidgetHandler) CreateWidget(w http.ResponseWriter, r *http.Request) {
 	}
 
 	subject := cazi.Subject{
-		Token: cazi.ResourceReference{Type: "user", ID: userID},
+		Assertion: cazi.ResourceReference{Type: "user", ID: userID},
 	}
 
 	// Decode request
@@ -102,7 +102,7 @@ func (h *WidgetHandler) GetWidget(w http.ResponseWriter, r *http.Request) {
 	}
 
 	subject := cazi.Subject{
-		Token: cazi.ResourceReference{Type: "user", ID: userID},
+		Assertion: cazi.ResourceReference{Type: "user", ID: userID},
 	}
 
 	// Extract widget ID from path

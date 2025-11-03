@@ -25,21 +25,19 @@ type CheckRequest struct {
 
 // Subject represents the actor performing the action.
 type Subject struct {
-	Token    Token  // assertions about the subject
-	Relation string // optional relation (e.g., "member")
+	Assertion Assertion // assertions about the subject
+	Relation  string    // optional relation (e.g., "member")
 }
 
 // Object represents the target of the action.
 type Object struct {
-	Token Token // assertions about the object
+	Assertion Assertion // assertions about the object
 }
 
-// Token is a one-of representing assertions about a subject or object.
-// Exactly one concrete token type should be used at a time.
-// TODO: these are not always tokens; more like Assertion(s),
-// some of which may be verifiable
-type Token interface {
-	isToken()
+// Assertion is a one-of representing assertions about a subject or object.
+// Exactly one concrete assertion type should be used at a time.
+type Assertion interface {
+	isAssertion()
 }
 
 // Claims carries arbitrary JSON-like claims, optionally signed.
@@ -48,7 +46,7 @@ type Claims struct {
 	Claims map[string]any
 }
 
-func (Claims) isToken() {}
+func (Claims) isAssertion() {}
 
 // OpaqueToken carries an opaque payload with a declared type, optionally signed (e.g., JWT).
 type OpaqueToken struct {
@@ -56,7 +54,7 @@ type OpaqueToken struct {
 	Raw  []byte // raw token bytes
 }
 
-func (OpaqueToken) isToken() {}
+func (OpaqueToken) isAssertion() {}
 
 // ResourceReference identifies a resource by type and id.
 type ResourceReference struct {
@@ -64,7 +62,7 @@ type ResourceReference struct {
 	ID   string
 }
 
-func (ResourceReference) isToken() {}
+func (ResourceReference) isAssertion() {}
 
 // DecisionKind is the tri-state outcome for Check.
 type DecisionKind int
