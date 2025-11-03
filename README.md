@@ -1,71 +1,37 @@
 # CAZI - Common Authorization Interface
 
-A common authorization interface defined via gRPC/protobuf.
+A Go interface specification for authorization systems.
 
-## Project Structure
+## Purpose
 
-```
-cazi/
-├── proto/              # Interface definitions
-├── implementations/    # Different implementations of the CAZI interface
-└── examples/          # Example services demonstrating usage
-```
+Define a common interface that decouples authorization decisions from their enforcement. Services check authorization through a standard interface; implementations determine policy.
 
-## Overview
-
-This project defines a common authorization interface that can be:
-- Implemented by various authorization providers
-- Used by services needing authorization capabilities
-- Enhanced with optional authorization context (requester and transaction claims)
-
-The interface is inspired by modern authorization patterns including [Transaction Tokens (draft-ietf-oauth-transaction-tokens)](https://www.ietf.org/archive/id/draft-ietf-oauth-transaction-tokens-06.html).
-
-## Features
-
-### Type-Safe Standard Claims
-
-CAZI provides a type-safe mechanism for working with authorization context claims:
+## Core Interface
 
 ```go
-// Using standard claims
-reqCtx := make(cazi.ContextClaims)
-cazi.ClaimSub.Set(reqCtx, "user123")
-cazi.ClaimRoles.Set(reqCtx, []string{"admin", "editor"})
-
-// Reading claims with type safety
-if sub, ok := cazi.ClaimSub.Get(reqCtx); ok {
-    fmt.Printf("Subject: %s\n", sub)
+type Interface interface {
+    Check(ctx context.Context, req CheckRequest) (CheckResponse, error)
 }
-
-// With default fallback
-username := cazi.ClaimPreferredUsername.GetOrDefault(reqCtx, "anonymous")
 ```
 
-### Custom Claims
+A `Check` operation accepts a subject, verb, and object, returning:
+- **Allow/Deny**: Boolean decision
+- **Conditional**: Expression for caller to evaluate
 
-Define your own typed claims using the same pattern:
+## Key Concepts
 
-```go
-var (
-    ClaimTenantID = cazi.Claim[string]{Key: "tenant_id"}
-    ClaimClearanceLevel = cazi.Claim[int]{Key: "clearance_level"}
-)
+**Tokens**: Subjects and objects are represented as tokens—resource references, claims, or opaque payloads. This allows flexible identity representation without prescribing authentication mechanisms.
 
-ClaimTenantID.Set(reqCtx, "tenant-456")
-```
+**Conditional Responses**: Authorization systems can return expressions (CEL, Rego, etc.) instead of making decisions directly. Callers evaluate these expressions against their own data, enabling authorization at query time.
 
-See [examples/custom-claims](examples/custom-claims/) for a complete demonstration.
+**Authorization Context**: Responses may include claims about the requester for downstream use without additional lookups.
 
-## Getting Started
+## Structure
 
-See the [widgets-service example](examples/widgets-service/) for a complete demonstration of:
-- Using the CAZI interface in a Go service with clean layered architecture
-- Treating CAZI as a foundational interface that domain models can depend on directly
-- A local CAZI implementation that returns CEL (Common Expression Language) authorization constraints
-- Passing authorization expressions down to the repository/database layer
-- Repositories that decide which expression languages they support (CEL, Rego, etc.)
-- Evaluating expressions as database filters (WHERE clauses) for eager authorization
-- Security benefits: "not found" = "not authorized" (information hiding)
+- `pkg/cazi/` - Core interface and types
+- `pkg/claims/` - Helpers for type-safe claim access
+- `examples/widgets-service/` - Reference implementation
 
-The widgets-service is a standalone Go module that can be built independently.
+## Example Use
 
+An authorization system returns a CEL expression like `owner_id == 'user-123'`. The caller passes this to its repository as a database filter. Resources that don't match are not found—indistinguishable from non-existent resources.
