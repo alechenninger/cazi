@@ -12,4 +12,3 @@ service CommonAuthorizationInterface {
 }
 
 // TODO: Define request/response messages
-

@@ -45,7 +45,7 @@ func (a *LocalAuthz) Check(ctx context.Context, req cazi.CheckRequest) (cazi.Che
 	case "create":
 		// Anyone can create widgets
 		// Include authorization context with requester info
-		reqCtx := make(cazi.ContextClaims)
+		reqCtx := make(cazi.Claims)
 		claims.Sub.Set(reqCtx, userID)
 
 		return cazi.CheckResponse{
@@ -60,7 +60,7 @@ func (a *LocalAuthz) Check(ctx context.Context, req cazi.CheckRequest) (cazi.Che
 		// The expression represents the constraint that must be evaluated against actual data
 
 		// Build authorization context using claims
-		reqCtx := make(cazi.ContextClaims)
+		reqCtx := make(cazi.Claims)
 		claims.Sub.Set(reqCtx, userID)
 
 		return cazi.CheckResponse{

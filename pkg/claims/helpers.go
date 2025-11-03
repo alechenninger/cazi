@@ -4,11 +4,11 @@ import (
 	"github.com/alechenninger/cazi/pkg/cazi"
 )
 
-// TopLevel creates a claim for a top-level key in ContextClaims.
+// TopLevel creates a claim for a top-level key in Claims.
 // Example: TopLevel[string]("sub") accesses claims["sub"]
 func TopLevel[T any](key string) cazi.Claim[T] {
 	return cazi.Claim[T]{
-		Get: func(claims cazi.ContextClaims) (T, bool) {
+		Get: func(claims cazi.Claims) (T, bool) {
 			val, ok := claims[key] // Safe even if claims is nil
 			if !ok {
 				var zero T
@@ -17,7 +17,7 @@ func TopLevel[T any](key string) cazi.Claim[T] {
 			typed, ok := val.(T)
 			return typed, ok
 		},
-		Set: func(claims cazi.ContextClaims, value T) {
+		Set: func(claims cazi.Claims, value T) {
 			if claims != nil {
 				claims[key] = value
 			}
@@ -25,7 +25,7 @@ func TopLevel[T any](key string) cazi.Claim[T] {
 	}
 }
 
-// Nested creates a claim for a nested path in ContextClaims.
+// Nested creates a claim for a nested path in Claims.
 // Example: Nested[string]("address", "city") accesses claims["address"]["city"]
 // When setting, it creates intermediate maps as needed.
 func Nested[T any](path ...string) cazi.Claim[T] {
@@ -34,7 +34,7 @@ func Nested[T any](path ...string) cazi.Claim[T] {
 	}
 
 	return cazi.Claim[T]{
-		Get: func(claims cazi.ContextClaims) (T, bool) {
+		Get: func(claims cazi.Claims) (T, bool) {
 			var zero T
 			// Traverse the path (safe even if claims is nil)
 			current := map[string]any(claims)
@@ -60,7 +60,7 @@ func Nested[T any](path ...string) cazi.Claim[T] {
 			typed, ok := val.(T)
 			return typed, ok
 		},
-		Set: func(claims cazi.ContextClaims, value T) {
+		Set: func(claims cazi.Claims, value T) {
 			if claims == nil {
 				return
 			}

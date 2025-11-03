@@ -17,9 +17,9 @@ type Interface interface {
 
 // CheckRequest captures the inputs to an authorization check.
 type CheckRequest struct {
-	Subject          Subject // subject token with optional relation
+	Subject          Subject // subject assertion with optional relation
 	Verb             string  // verb/relation
-	Object           Object  // object token
+	Object           Object  // object assertion
 	ConsistencyToken []byte  // optional opaque token for causal consistency
 }
 
@@ -40,11 +40,10 @@ type Assertion interface {
 	isAssertion()
 }
 
-// Claims carries arbitrary JSON-like claims, optionally signed.
-// TODO: can we make this the same type as ContextClaims?
-type Claims struct {
-	Claims map[string]any
-}
+// Claims represents a set of claims as key-value pairs.
+// This is JSON-compatible and can contain arbitrary structured data.
+// Claims can be used for subject/object assertions or authorization context.
+type Claims map[string]any
 
 func (Claims) isAssertion() {}
 
@@ -88,33 +87,29 @@ type AuthorizationContext struct {
 	// RequesterContext contains claims about the requester (subject).
 	// These are assertions about who is making the request, such as roles, attributes,
 	// or other identity-related information that may be useful for downstream processing.
-	RequesterContext ContextClaims
+	RequesterContext Claims
 
 	// TransactionContext contains claims about the requested operation itself.
 	// These are assertions about the transaction, such as environmental factors,
 	// computed context, or other operation-related information.
-	TransactionContext ContextClaims
+	TransactionContext Claims
 }
 
-// ContextClaims represents a set of authorization context claims as key-value pairs.
-// This is JSON-compatible and can contain arbitrary structured data.
-type ContextClaims map[string]any
-
-// Claim provides type-safe access to a specific claim in ContextClaims.
+// Claim provides type-safe access to a specific claim in Claims.
 type Claim[T any] struct {
-	Get func(ContextClaims) (T, bool)
-	Set func(ContextClaims, T)
+	Get func(Claims) (T, bool)
+	Set func(Claims, T)
 }
 
-// GetClaim retrieves a typed claim value from the context claims.
-// This is a convenience function that provides an alternative syntax: claims.GetClaim(ClaimSub)
-func GetClaim[T any](claims ContextClaims, claim Claim[T]) (T, bool) {
+// GetClaim retrieves a typed claim value from the claims.
+// This is a convenience function that provides an alternative syntax: GetClaim(claims, Sub)
+func GetClaim[T any](claims Claims, claim Claim[T]) (T, bool) {
 	return claim.Get(claims)
 }
 
-// SetClaim stores a typed claim value in the context claims.
-// This is a convenience function that provides an alternative syntax: SetClaim(claims, ClaimSub, "user123")
-func SetClaim[T any](claims ContextClaims, claim Claim[T], value T) {
+// SetClaim stores a typed claim value in the claims.
+// This is a convenience function that provides an alternative syntax: SetClaim(claims, Sub, "user123")
+func SetClaim[T any](claims Claims, claim Claim[T], value T) {
 	claim.Set(claims, value)
 }
 
