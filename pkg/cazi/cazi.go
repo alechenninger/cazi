@@ -78,9 +78,10 @@ const (
 
 // CheckResponse is the outcome of a Check invocation.
 type CheckResponse struct {
-	Decision  DecisionKind         // allow/deny/conditional
-	Condition Expression           // present when DecisionConditional (check Language != "" to detect if set)
-	Context   AuthorizationContext // additional context about the authorization decision (maps may be nil if not provided)
+	Decision         DecisionKind         // allow/deny/conditional
+	Condition        Expression           // present when DecisionConditional (check Language != "" to detect if set)
+	Context          AuthorizationContext // additional context about the authorization decision (maps may be nil if not provided)
+	ConsistencyToken ConsistencyToken     // token representing the freshness of this authorization decision (check len > 0 to detect if set)
 }
 
 // AuthorizationContext provides optional additional information about the authorization decision.
@@ -141,7 +142,8 @@ type ListObjectsRequest struct {
 //   - Attribute-based filters: "resource.owner_id == 'user123'"
 //   - Complex conditions: "resource.owner_id == 'user123' && resource.status == 'active'"
 type ListObjectsResponse struct {
-	Decision  DecisionKind // allow/deny/conditional
-	Condition Expression   // filter expression to apply (check Language != "" to detect if set)
-	Context   AuthorizationContext
+	Decision         DecisionKind // allow/deny/conditional
+	Condition        Expression   // filter expression to apply (check Language != "" to detect if set)
+	Context          AuthorizationContext
+	ConsistencyToken ConsistencyToken // token representing the freshness of this authorization decision (check len > 0 to detect if set)
 }
