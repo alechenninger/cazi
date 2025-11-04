@@ -8,10 +8,21 @@ A simple microservice demonstrating usage of the CAZI interface with a clean lay
 presentation/   - HTTP handlers (API layer)
 application/    - Application services (uses CAZI)
 domain/         - Business logic, domain models, repository interface
-infrastructure/ - Implementations (in-memory repo, local CAZI)
+infrastructure/ - Implementations (in-memory repo, PostgreSQL repo, local CAZI)
 ```
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed flow diagrams and design decisions.
+### Repository Implementations
+
+The service includes two repository implementations:
+
+1. **InMemoryWidgetRepository**: In-memory storage with CEL expression evaluation
+2. **PostgresWidgetRepository**: PostgreSQL-backed storage with [cel2sql](https://github.com/SPANDigital/cel2sql) for WHERE clause translation
+
+Both implementations:
+- Accept `cazi.Expression` for authorization filtering
+- Apply authorization constraints eagerly at the data access layer
+- Return the same sentinel errors (`ErrNotFound`, `ErrUnauthorized`)
+- Use the domain model's `Serialize`/`Deserialize` methods for data transformation
 
 ## Domain
 
@@ -74,16 +85,17 @@ For example, when checking read access, CAZI returns:
   "decision": "conditional",
   "condition": {
     "language": "cel",
-    "expression": "owner_id == 'alice'"
+    "expression": "widget.owner_id == 'user-alice'"
   }
 }
 ```
 
 The application service then:
 1. Passes the `cazi.Expression` directly to the repository's `FindByID` method
-2. The repository checks if it supports the expression language and evaluates accordingly
-3. For CEL expressions, the repository evaluates them against widget data (in a real DB, CEL would translate to WHERE clause)
-4. Returns "not found" if either the widget doesn't exist OR doesn't satisfy the expression
+2. The repository checks if it supports the expression language
+3. **InMemoryRepository**: Evaluates CEL against widget data using the CEL library
+4. **PostgresRepository**: Translates CEL to SQL WHERE clauses using [cel2sql](https://github.com/SPANDigital/cel2sql)
+5. Returns "not found" if either the widget doesn't exist OR doesn't satisfy the expression
 
 **Design Philosophy**: CAZI is treated as a standard interface that domain models can depend on directly, similar to how they might depend on `context.Context` or other foundational interfaces. This keeps the architecture simple while allowing different repository implementations to support different expression languages.
 
@@ -107,4 +119,34 @@ This context can be used by downstream services for logging, auditing, or additi
 - Different repositories can support different expression languages
 - Easy to add support for new expression languages (Rego, custom DSL, etc.)
 - Clear error messages when an unsupported language is used
+
+## Testing
+
+The service includes comprehensive tests:
+
+### HTTP Layer Tests
+End-to-end tests in `presentation/handlers_test.go` verify the complete authorization flow using the in-memory repository.
+
+```bash
+go test ./presentation -v
+```
+
+### PostgreSQL Repository Tests
+Integration tests in `infrastructure/postgres_repository_test.go` use [testcontainers-go](https://golang.testcontainers.org/) to test against a real PostgreSQL database. These tests demonstrate:
+- CEL-to-SQL translation with cel2sql
+- Authorization constraint application at the database layer
+- Proper information hiding (not found vs unauthorized)
+
+**Requirements**: Docker must be running to execute PostgreSQL tests.
+
+```bash
+go test ./infrastructure -v -run TestPostgresRepository
+```
+
+### Run All Tests
+```bash
+go test ./... -v
+```
+
+**Note**: The PostgreSQL tests will be skipped if Docker is not available. The service still demonstrates the full pattern with the in-memory repository.
 
