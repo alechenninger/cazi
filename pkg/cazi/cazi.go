@@ -135,10 +135,11 @@ type ListObjectsRequest struct {
 
 // ListObjectsResponse captures the outputs of an object listing.
 // Rather than returning a list of IDs, it returns a filter expression
-// that the caller can apply to their query. This supports both:
-// - Specific ID lists: "id in ['a', 'b', 'c']"
-// - Attribute-based filters: "owner_id == 'user123'"
-// - Complex conditions: "owner_id == 'user123' && status == 'active'"
+// that the caller can apply to their query. This supports all of:
+//
+//   - Specific ID lists: "resource.id in ['a', 'b', 'c']"
+//   - Attribute-based filters: "resource.owner_id == 'user123'"
+//   - Complex conditions: "resource.owner_id == 'user123' && resource.status == 'active'"
 type ListObjectsResponse struct {
 	Decision  DecisionKind // allow/deny/conditional
 	Condition Expression   // filter expression to apply (check Language != "" to detect if set)
