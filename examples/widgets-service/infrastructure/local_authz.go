@@ -67,7 +67,7 @@ func (a *LocalAuthz) Check(ctx context.Context, req cazi.CheckRequest) (cazi.Che
 			Decision: cazi.DecisionConditional,
 			Condition: cazi.Expression{
 				Language:   "cel",
-				Expression: fmt.Sprintf("owner_id == '%s'", userID),
+				Expression: fmt.Sprintf("widget.owner_id == '%s'", userID),
 			},
 			Context: cazi.AuthorizationContext{
 				RequesterContext: reqCtx,
@@ -77,4 +77,41 @@ func (a *LocalAuthz) Check(ctx context.Context, req cazi.CheckRequest) (cazi.Che
 	default:
 		return cazi.CheckResponse{Decision: cazi.DecisionDeny}, fmt.Errorf("unknown verb: %s", req.Verb)
 	}
+}
+
+// ListObjects implements the CAZI ListObjects operation.
+// Returns a conditional expression that filters objects based on authorization policy.
+// The caller can apply this expression to their query (e.g., as a WHERE clause).
+func (a *LocalAuthz) ListObjects(ctx context.Context, req cazi.ListObjectsRequest) (cazi.ListObjectsResponse, error) {
+	// Extract subject user ID
+	subjectRes, ok := req.Subject.Assertion.(cazi.ResourceReference)
+	if !ok {
+		return cazi.ListObjectsResponse{Decision: cazi.DecisionDeny}, fmt.Errorf("subject must be a ResourceReference")
+	}
+	if subjectRes.Type != "user" {
+		return cazi.ListObjectsResponse{Decision: cazi.DecisionDeny}, fmt.Errorf("subject must be of type 'user'")
+	}
+	userID := subjectRes.ID
+
+	// Check authorization policy for listing this object type
+	if req.ObjectType != "widget" {
+		return cazi.ListObjectsResponse{Decision: cazi.DecisionDeny}, fmt.Errorf("unsupported object type: %s", req.ObjectType)
+	}
+
+	// Hardcoded policy: users can list widgets they own
+	// Return a CEL expression that filters by owner_id
+	// The caller applies this to their query (e.g., WHERE owner_id = 'user123')
+	reqCtx := make(cazi.Claims)
+	claims.Sub.Set(reqCtx, userID)
+
+	return cazi.ListObjectsResponse{
+		Decision: cazi.DecisionConditional,
+		Condition: cazi.Expression{
+			Language:   "cel",
+			Expression: fmt.Sprintf("widget.owner_id == '%s'", userID),
+		},
+		Context: cazi.AuthorizationContext{
+			RequesterContext: reqCtx,
+		},
+	}, nil
 }

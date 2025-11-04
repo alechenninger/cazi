@@ -76,7 +76,13 @@ func (h *WidgetHandler) CreateWidget(w http.ResponseWriter, r *http.Request) {
 
 	widget, err := h.service.CreateWidget(r.Context(), appReq)
 	if err != nil {
-		h.writeError(w, http.StatusForbidden, err.Error())
+		// Check for specific error types
+		if errors.Is(err, domain.ErrUnauthorized) {
+			h.writeError(w, http.StatusForbidden, "access denied")
+			return
+		}
+		// Any other error is a server error
+		h.writeError(w, http.StatusInternalServerError, "internal server error")
 		return
 	}
 
@@ -140,6 +146,56 @@ func (h *WidgetHandler) GetWidget(w http.ResponseWriter, r *http.Request) {
 		Description: widget.Description,
 		OwnerID:     widget.OwnerID,
 	})
+}
+
+// ListWidgets handles GET /widgets requests.
+func (h *WidgetHandler) ListWidgets(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		h.writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	// Extract user ID from header and construct Subject (simplified authentication)
+	userID := r.Header.Get("X-User-ID")
+	if userID == "" {
+		h.writeError(w, http.StatusUnauthorized, "missing X-User-ID header")
+		return
+	}
+
+	subject := cazi.Subject{
+		Assertion: cazi.ResourceReference{Type: "user", ID: userID},
+	}
+
+	// Call application service
+	appReq := application.ListWidgetsRequest{
+		Subject: subject,
+	}
+
+	widgets, err := h.service.ListWidgets(r.Context(), appReq)
+	if err != nil {
+		// Check for specific error types
+		if errors.Is(err, domain.ErrUnauthorized) {
+			h.writeError(w, http.StatusForbidden, "access denied")
+			return
+		}
+		// Any other error is a server error
+		h.writeError(w, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	// Convert to HTTP response format
+	httpResponses := make([]WidgetHTTPResponse, len(widgets))
+	for i, widget := range widgets {
+		httpResponses[i] = WidgetHTTPResponse{
+			ID:          widget.ID,
+			Name:        widget.Name,
+			Description: widget.Description,
+			OwnerID:     widget.OwnerID,
+		}
+	}
+
+	// Write response
+	h.writeJSON(w, http.StatusOK, httpResponses)
 }
 
 func (h *WidgetHandler) writeJSON(w http.ResponseWriter, status int, data interface{}) {

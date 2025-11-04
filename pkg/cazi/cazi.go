@@ -13,14 +13,15 @@ type Interface interface {
 	//   - Allowed: true/false
 	//   - Conditional: an expression the caller can evaluate in its own context
 	Check(ctx context.Context, req CheckRequest) (CheckResponse, error)
+	ListObjects(ctx context.Context, req ListObjectsRequest) (ListObjectsResponse, error)
 }
 
 // CheckRequest captures the inputs to an authorization check.
 type CheckRequest struct {
-	Subject          Subject // subject assertion with optional relation
-	Verb             string  // verb/relation
-	Object           Object  // object assertion
-	ConsistencyToken []byte  // optional opaque token for causal consistency
+	Subject        Subject          // subject assertion with optional relation
+	Verb           string           // verb/relation
+	Object         Object           // object assertion
+	AtLeastAsFresh ConsistencyToken // optional opaque token for causal consistency
 }
 
 // Subject represents the actor performing the action.
@@ -33,6 +34,8 @@ type Subject struct {
 type Object struct {
 	Assertion Assertion // assertions about the object
 }
+
+type ConsistencyToken []byte
 
 // Assertion is a one-of representing assertions about a subject or object.
 // Exactly one concrete assertion type should be used at a time.
@@ -119,4 +122,25 @@ func SetClaim[T any](claims Claims, claim Claim[T], value T) {
 type Expression struct {
 	Language   string // optional (e.g., "cel")
 	Expression string // the expression to evaluate
+}
+
+// ListObjectsRequest captures the inputs to an object listing.
+type ListObjectsRequest struct {
+	Subject        Subject          // subject assertion with optional relation
+	Verb           string           // verb/relation
+	ObjectType     string           // type of objects to list
+	Filter         Expression       // optional filter expression
+	AtLeastAsFresh ConsistencyToken // optional opaque token for causal consistency
+}
+
+// ListObjectsResponse captures the outputs of an object listing.
+// Rather than returning a list of IDs, it returns a filter expression
+// that the caller can apply to their query. This supports both:
+// - Specific ID lists: "id in ['a', 'b', 'c']"
+// - Attribute-based filters: "owner_id == 'user123'"
+// - Complex conditions: "owner_id == 'user123' && status == 'active'"
+type ListObjectsResponse struct {
+	Decision  DecisionKind // allow/deny/conditional
+	Condition Expression   // filter expression to apply (check Language != "" to detect if set)
+	Context   AuthorizationContext
 }

@@ -21,12 +21,9 @@ type InMemoryWidgetRepository struct {
 
 // NewInMemoryWidgetRepository creates a new in-memory repository.
 func NewInMemoryWidgetRepository() *InMemoryWidgetRepository {
-	// Create CEL environment with widget field declarations
+	// Create CEL environment with widget object type
 	env, err := cel.NewEnv(
-		cel.Variable("owner_id", cel.StringType),
-		cel.Variable("id", cel.StringType),
-		cel.Variable("name", cel.StringType),
-		cel.Variable("description", cel.StringType),
+		cel.Variable("widget", cel.MapType(cel.StringType, cel.DynType)),
 	)
 	if err != nil {
 		panic(fmt.Sprintf("failed to create CEL environment: %v", err))
@@ -75,6 +72,33 @@ func (r *InMemoryWidgetRepository) FindByID(ctx context.Context, id domain.Widge
 	return domain.DeserializeWidget(data), nil
 }
 
+// FindAll retrieves all widgets from memory, optionally applying an authorization expression.
+// The expression is evaluated as a filter - only matching widgets are returned.
+func (r *InMemoryWidgetRepository) FindAll(ctx context.Context, authzExpression cazi.Expression) ([]*domain.Widget, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	var results []*domain.Widget
+
+	for _, data := range r.widgets {
+		// Apply authorization expression as part of the query filter
+		if authzExpression.Language != "" {
+			matches, err := r.evaluateExpression(data, authzExpression)
+			if err != nil {
+				return nil, fmt.Errorf("failed to evaluate authorization expression: %w", err)
+			}
+			if !matches {
+				// Skip widgets that don't match the expression
+				continue
+			}
+		}
+
+		results = append(results, domain.DeserializeWidget(data))
+	}
+
+	return results, nil
+}
+
 // evaluateExpression evaluates an authorization expression against widget data.
 // The repository decides which expression languages it supports.
 func (r *InMemoryWidgetRepository) evaluateExpression(data domain.WidgetData, expr cazi.Expression) (bool, error) {
@@ -101,12 +125,14 @@ func (r *InMemoryWidgetRepository) evaluateCEL(data domain.WidgetData, expressio
 		return false, fmt.Errorf("CEL program creation error: %w", err)
 	}
 
-	// Prepare input data for CEL evaluation
-	input := map[string]interface{}{
-		"owner_id":    data.OwnerID,
-		"id":          data.ID,
-		"name":        data.Name,
-		"description": data.Description,
+	// Prepare input data for CEL evaluation with widget object
+	input := map[string]any{
+		"widget": map[string]any{
+			"owner_id":    data.OwnerID,
+			"id":          data.ID,
+			"name":        data.Name,
+			"description": data.Description,
+		},
 	}
 
 	// Evaluate the expression

@@ -24,6 +24,11 @@ type GetWidgetRequest struct {
 	WidgetID string
 }
 
+// ListWidgetsRequest is a value object for listing widgets.
+type ListWidgetsRequest struct {
+	Subject cazi.Subject
+}
+
 // WidgetResponse is a value object representing a widget in the application layer.
 type WidgetResponse struct {
 	ID          string
@@ -62,7 +67,7 @@ func (s *WidgetService) CreateWidget(ctx context.Context, req CreateWidgetReques
 	}
 
 	if authzResp.Decision != cazi.DecisionAllow {
-		return nil, fmt.Errorf("access denied: cannot create widget")
+		return nil, domain.ErrUnauthorized
 	}
 
 	// Extract user ID from authorization context
@@ -111,7 +116,7 @@ func (s *WidgetService) GetWidget(ctx context.Context, req GetWidgetRequest) (*W
 	}
 
 	if authzResp.Decision == cazi.DecisionDeny {
-		return nil, fmt.Errorf("access denied: cannot read widget")
+		return nil, domain.ErrUnauthorized
 	}
 
 	// Pass authorization expression directly to repository if conditional
@@ -128,4 +133,41 @@ func (s *WidgetService) GetWidget(ctx context.Context, req GetWidgetRequest) (*W
 		Description: widget.Description(),
 		OwnerID:     widget.OwnerID(),
 	}, nil
+}
+
+// ListWidgets retrieves all widgets the subject is authorized to see.
+func (s *WidgetService) ListWidgets(ctx context.Context, req ListWidgetsRequest) ([]*WidgetResponse, error) {
+	// Get authorization filter for listing widgets
+	authzResp, err := s.authz.ListObjects(ctx, cazi.ListObjectsRequest{
+		Subject:    req.Subject,
+		Verb:       "read",
+		ObjectType: "widget",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("authorization check failed: %w", err)
+	}
+
+	if authzResp.Decision == cazi.DecisionDeny {
+		return nil, domain.ErrUnauthorized
+	}
+
+	// Pass authorization expression directly to repository
+	// The repository applies it as a filter (e.g., WHERE clause)
+	widgets, err := s.repo.FindAll(ctx, authzResp.Condition)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list widgets: %w", err)
+	}
+
+	// Convert to response objects
+	responses := make([]*WidgetResponse, len(widgets))
+	for i, widget := range widgets {
+		responses[i] = &WidgetResponse{
+			ID:          string(widget.ID()),
+			Name:        widget.Name(),
+			Description: widget.Description(),
+			OwnerID:     widget.OwnerID(),
+		}
+	}
+
+	return responses, nil
 }
