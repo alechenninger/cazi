@@ -11,12 +11,13 @@ Define a common interface that decouples authorization decisions from their enfo
 ```go
 type Interface interface {
     Check(ctx context.Context, req CheckRequest) (CheckResponse, error)
+    ListObjects(ctx context.Context, req ListObjectsRequest) (ListObjectsResponse, error)
 }
 ```
 
-A `Check` operation accepts a subject, verb, and object, returning:
-- **Allow/Deny**: Boolean decision
-- **Conditional**: Expression for caller to evaluate
+**Check**: Accepts a subject, verb, and object, returning allow/deny or a conditional expression.
+
+**ListObjects**: Returns a filter expression for querying authorized objects of a given type.
 
 ## Key Concepts
 
