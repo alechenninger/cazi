@@ -16,6 +16,44 @@ type Interface interface {
 	ListObjects(ctx context.Context, req ListObjectsRequest) (ListObjectsResponse, error)
 }
 
+type FastStore[T any, U any] interface {
+	// Replicates data to both an application's local store, and the authorization store,
+	// with a fast but potentially inconsistent protocol.
+	//
+	// Implementations are expected to write the resulting data to the authorization store.
+	WithFastReplication(protocol FastReplication[T, U])
+
+	// Receives data back from the authorization store.
+	//
+	// If the store supports this,
+	// this can be used to make mutable attributes eventually consistent with the authorization store.
+	//
+	// This may result in lost writes if concurrent transactions write the same attributes.
+	// If mutable attributes need to be replicated without lost writes,
+	// see [AccurateStore].
+	Receive(onData func(ctx context.Context, data AuthorizationData[U]) error) error
+}
+
+type AuthorizationData[T any] struct {
+	WrittenAt ConsistencyToken
+	Data      T
+}
+
+type FastReplication[T any, U any] struct {
+	// Commit calls the provided function [fn] within a transaction.
+	//
+	// Before the function is called, a transaction must be started.
+	// After the function completes successfully, the transaction is committed.
+	// If the function returns an error, the transaction is rolled back.
+	Commit func(ctx context.Context, fn func(ctx context.Context) (data T, err error)) error
+
+	// Write is the function that writes data to the applications own store within a transaction.
+	Write func(ctx context.Context) (data T, err error)
+}
+
+type AccurateStore interface {
+}
+
 // CheckRequest captures the inputs to an authorization check.
 type CheckRequest struct {
 	Subject        Subject          // subject assertion with optional relation
@@ -27,7 +65,8 @@ type CheckRequest struct {
 // Subject represents the actor performing the action.
 type Subject struct {
 	Assertion Assertion // assertions about the subject
-	Relation  string    // optional relation (e.g., "member")
+	// TODO: consider removing this
+	Relation string // optional relation (e.g., "member")
 }
 
 // Object represents the target of the action.
